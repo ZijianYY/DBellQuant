@@ -5,6 +5,11 @@
 
 [arXiv](https://arxiv.org/abs/2507.01027)
 
+DBellQuant Framework Overview
+
+![DBellQuant Framework](imgs/framework.png)
+
+
 Authors: Zijian Ye*, Wei Huang*, Yifei Yu, Tianhe Ren, Zhongrui Wang, Xiaojuan Qi
 
 
@@ -45,4 +50,11 @@ python3 run_smooth.py Qwen/Qwen2.5-7B c4 braq --blocksize 128 --salient_metric h
 Attention: Qwen requires newer transformers version.
 
 ## Results
+
+QA results
+
 ![DBellQuant](imgs/qa_result.png)
+
+Perplexity results
+
+![DBellQuant](imgs/perplexity.png)
