@@ -7,6 +7,8 @@
 
 Authors: Zijian Ye*, Wei Huang*, Yifei Yu, Tianhe Ren, Zhongrui Wang, Xiaojuan Qi
 
+
+
 This repository contains the implementation of the paper:
 
 ## Dependencies
@@ -41,3 +43,6 @@ DBellQuant for Qwen Families
 python3 run_smooth.py Qwen/Qwen2.5-7B c4 braq --blocksize 128 --salient_metric hessian
 ```
 Attention: Qwen requires newer transformers version.
+
+## Results
+![DBellQuant](imgs/qa_result.png)
