@@ -45,7 +45,7 @@ python3 run_smooth.py facebook/opt-6.7b c4 braq --blocksize 128 --salient_metric
 DBellQuant for Qwen Families
 
 ```
-python3 run_smooth.py Qwen/Qwen2.5-7B c4 braq --blocksize 128 --salient_metric hessian
+python3 run_qwen.py Qwen/Qwen2.5-7B c4 braq --blocksize 128 --salient_metric hessian
 ```
 Attention: Qwen requires newer transformers version.
 
