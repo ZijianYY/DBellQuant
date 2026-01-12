@@ -10,6 +10,7 @@ def sign_ste(x: torch.Tensor):
     Implement Straight-Through Estimator for sign operation.
     """
     return (torch.sign(x) - x).detach() + x
+
 @torch.no_grad()
 def part_mean(tensor, op='-'):
     non_zero = tensor*(tensor!=0)
@@ -18,98 +19,8 @@ def part_mean(tensor, op='-'):
 
     return mean_val
 
-class BinarizationFunction(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, input):
-        """
-        前向传播：二值化操作
-        """
-        ctx.save_for_backward(input)
-        return torch.sign(input)  # 二值化操作
 
-    @staticmethod
-    def backward(ctx, grad_output):
-        """
-        反向传播：替代梯度
-        """
-        input, = ctx.saved_tensors
-        grad_input = grad_output.clone()
-        smooth_grad = 1 - torch.tanh(input) ** 2  # 使用 tanh 的导数作为梯度替代
-        return grad_input * smooth_grad
-
-    # @staticmethod
-    # def backward(ctx, grad_output):
-    #     input, = ctx.saved_tensors
-    #     # 自定义梯度逻辑，符号函数的梯度近似为 1
-    #     grad_input = grad_output.clone()
-    #     grad_input[input.abs() > 1] = 0  # 梯度只对 [-1, 1] 范围内的值有效
-    #     return grad_input
-
-
-# def high_order_residual(x, mask, order=2):
-#     sum_order = torch.zeros_like(x)
-#     new_matrix = x.clone()
-#     new_matrix = new_matrix * mask
-
-#     for od in range(order):
-#         residual = new_matrix - sum_order
-#         masked_x_tensor = residual * mask  # 替代 torch.where 并避免 nan
-
-#         # 计算加权平均
-#         valid_count = mask.sum(dim=1, keepdim=True)
-#         mean_tensor_all = (masked_x_tensor * mask).sum(dim=1) / (valid_count.squeeze(1) + 1e-6)
-#         mean_tensor_all[valid_count.squeeze(1) == 0] = 0  # 防止除以 0
-
-#         # 减去均值
-#         masked_x_tensor = masked_x_tensor - mean_tensor_all[:, None]
-
-#         # 计算加权绝对值平均
-#         scale_tensor_all = (torch.abs(masked_x_tensor) * mask).sum(dim=1) / (valid_count.squeeze(1) + 1e-6)
-#         scale_tensor_all[valid_count.squeeze(1) == 0] = 0  # 防止除以 0
-
-#         # 使用自定义二值化函数
-#         binary = BinarizationFunction.apply(masked_x_tensor)
-#         binary = binary * scale_tensor_all[:, None]  # 乘以 scale
-#         binary = binary + mean_tensor_all[:, None]  # 加回均值
-
-#         # 累计结果
-#         sum_order = sum_order + binary * mask
-
-#     return sum_order
-
-# def high_order_residual(x, mask, order=2):
-#     # 确保输入张量和掩码可微
-#     x = x.clone().detach().requires_grad_(True)  # 确保 x 可微
-#     mask = mask.clone().detach().float()  # 确保 mask 是浮点型张量
-
-#     sum_order = torch.zeros_like(x)
-#     new_matrix = x * mask  # 避免 clone()
-
-#     for od in range(order):
-#         residual = new_matrix - sum_order
-#         masked_x_tensor = residual * mask  # 替代 torch.where 并避免 nan
-
-#         # 计算加权平均
-#         valid_count = mask.sum(dim=1, keepdim=True)
-#         mean_tensor_all = (masked_x_tensor * mask).sum(dim=1) / (valid_count.squeeze(1) + 1e-6)
-#         mean_tensor_all[valid_count.squeeze(1) == 0] = 0  # 防止除以 0
-
-#         # 减去均值
-#         masked_x_tensor = masked_x_tensor - mean_tensor_all[:, None]
-
-#         # 计算加权绝对值平均
-#         scale_tensor_all = (torch.abs(masked_x_tensor) * mask).sum(dim=1) / (valid_count.squeeze(1) + 1e-6)
-#         scale_tensor_all[valid_count.squeeze(1) == 0] = 0  # 防止除以 0
-
-#         # 使用自定义二值化函数
-#         binary = BinarizationFunction.apply(masked_x_tensor)
-#         binary = binary * scale_tensor_all[:, None]  # 乘以 scale
-#         binary = binary + mean_tensor_all[:, None]  # 加回均值
-
-#         # 累计结果
-#         sum_order = sum_order + binary * mask
-
-#     return sum_order
+   
 @torch.no_grad()
 def high_order_residual(x, mask, order=2):
     sum_order = torch.zeros_like(x)

@@ -16,12 +16,8 @@ Generate tokenizer and return it to preload datasets by converting them to embed
 '''
 def get_tokenizer(model):
     if "llama" in model.lower():
-        # tokenizer = LlamaTokenizer.from_pretrained(model, use_fast=False)
-        # tokenizer = LlamaTokenizer.from_pretrained("huggyllama/llama-7b", add_eos_token= True)
-        # tokenizer = AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B")
-        # tokenizer = AutoTokenizer.from_pretrained("huggyllama/llama-7b")
-        # tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf")
-        tokenizer = AutoTokenizer.from_pretrained(model)
+        tokenizer = LlamaTokenizer.from_pretrained(model, use_fast=False)
+
         # fix for transformer 4.28.0.dev0 compatibility
         if tokenizer.bos_token_id != 1 or tokenizer.eos_token_id != 2:
             try:
@@ -31,7 +27,12 @@ def get_tokenizer(model):
                 pass
     elif "mamba" in model.lower():
         tokenizer = AutoTokenizer.from_pretrained("state-spaces/mamba-2.8b-hf")
-        # tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
+    elif "qwen" in model.lower():    
+        tokenizer = AutoTokenizer.from_pretrained("Model/Qwen/Qwen3-8B")
+    elif "gemma" in model.lower():    
+        tokenizer = AutoTokenizer.from_pretrained("Model/google/gemma-2-9b")    
+    elif "deepseek" in model.lower():    
+        tokenizer = AutoTokenizer.from_pretrained("/home/zijian/projects/BiLLM/Model/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B")
     else:
         tokenizer = AutoTokenizer.from_pretrained(model, use_fast=False)
     return tokenizer
@@ -40,6 +41,8 @@ def get_wikitext2(nsamples, seed, seqlen, model, tokenizer):
     
     traindata = load_dataset('wikitext', 'wikitext-2-raw-v1', split='train')
     testdata = load_dataset('wikitext', 'wikitext-2-raw-v1', split='test')
+    
+    # print(traindata)
 
     trainenc = tokenizer(" ".join(traindata['text']), return_tensors='pt')
     testenc = tokenizer("\n\n".join(testdata['text']), return_tensors='pt')
@@ -81,7 +84,9 @@ def get_c4(nsamples, seed, seqlen, model, tokenizer):
     # traindata = load_dataset(
     #     'allenai/c4', 'allenai--c4', data_files={'train': 'en/c4-train.00000-of-01024.json.gz'}, split='train'
     # )
+    # traindata = load_dataset('json', data_files='/home/zijian/projects/BiLLM/c4/c4-train.00000-of-01024.json.gz', split='train')
     traindata = load_dataset('allenai/c4', data_files={'train': 'en/c4-train.00000-of-01024.json.gz'}, split='train')
+    # valdata = load_dataset('json', data_files='/home/zijian/projects/BiLLM/c4/c4-validation.00000-of-00008.json.gz', split='train')
     # valdata = load_dataset(
     #     'allenai/c4', 'allenai--c4', data_files={'validation': 'en/c4-validation.00000-of-00008.json.gz'}, split='validation'
     # )

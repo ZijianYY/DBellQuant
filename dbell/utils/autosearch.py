@@ -100,6 +100,8 @@ def structural_searching(origin_matrix, up_lim=30):
             minimal_value_0 = quantize_error_0
             optimal_split_0 = i
 
+    # with open("bitwidth.txt", "a") as file:  # 使用 "a" 模式以追加内容
+        # file.write(f"{optimal_split_0}\n")  # 写入值并跳一行
     _, top_braq_2_columns = torch.topk(true_counts, optimal_split_0)
     mask3 = torch.full((origin_matrix.shape[0], origin_matrix.shape[1]), False).to(origin_matrix.device)
     mask3[:, top_braq_2_columns] = True

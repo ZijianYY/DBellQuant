@@ -4,13 +4,12 @@ import torch
 import torch.nn as nn
 
 from bigptq import BRAGPTQ
-from bigptq import BRAGPTQ_newloss
 from binary import Binarization
 from modelutils import find_layers
-from smoothquant.smooth import smooth_lm
 from smoothquant.smooth import smooth_lm_new
 from smoothquant.fake_quant import quantize_llama_like
 from smoothquant.fake_quant import quantize_opt
+
 
 
 def get_model(model):
@@ -32,10 +31,23 @@ def get_model(model):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         model = LlamaForCausalLM.from_pretrained(model, torch_dtype="auto")
-        # model = AutoModelForCausalLM.from_pretrained("huggyllama/llama-7b")
-#         model = LlamaForCausalLM.from_pretrained(
-#     "huggyllama/llama-7b", torch_dtype=torch.float16, device_map=device
-# )
+
+        model.seqlen = 2048
+        
+    elif "qwen" in model:
+        from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        model = AutoModelForCausalLM.from_pretrained("/home/zijian/projects/BiLLM/Model/Qwen/Qwen2.5-7B" ,torch_dtype="auto")
+
+        model.seqlen = 2048
+        
+    elif "gemma" in model:
+        from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        model = AutoModelForCausalLM.from_pretrained(model,torch_dtype=torch.float16)
+
         model.seqlen = 2048
     return model
 
@@ -70,6 +82,14 @@ def quant_sequential(model, dataloader, dev):
         ):
             model.model.decoder.project_in = model.model.decoder.project_in.to(dev)
     elif "llama" in args.model:
+        layers = model.model.layers
+        model.model.embed_tokens = model.model.embed_tokens.to(dev)
+        model.model.norm = model.model.norm.to(dev)
+    elif "qwen" in args.model:
+        layers = model.model.layers
+        model.model.embed_tokens = model.model.embed_tokens.to(dev)
+        model.model.norm = model.model.norm.to(dev)
+    elif "gemma" in args.model:
         layers = model.model.layers
         model.model.embed_tokens = model.model.embed_tokens.to(dev)
         model.model.norm = model.model.norm.to(dev)
@@ -119,24 +139,26 @@ def quant_sequential(model, dataloader, dev):
         model.model.norm = model.model.norm.cpu()
         # model.model.embed_tokens = model.model.embed_tokens.to(dev)
         # model.model.norm = model.model.norm.to(dev)
+    elif "qwen" in args.model:
+        model.model.embed_tokens = model.model.embed_tokens.cpu()
+        model.model.norm = model.model.norm.cpu()
+    elif "gemma" in args.model:
+        model.model.embed_tokens = model.model.embed_tokens.cpu()
+        model.model.norm = model.model.norm.cpu()
     torch.cuda.empty_cache()
 
     outs = torch.zeros_like(inps)
     attention_mask = cache["attention_mask"]
 
     print("Ready.")
-    
-    data_dict = {}
-    
+
 
     for i in range(len(layers)):
-    # for i in range(16):
         layer = layers[i].to(dev)
         # print(layer)
 
         subset = find_layers(layer)
-        # if i == 31:
-        #     del subset['mlp.gate_proj']
+
         print(subset)
 
         gptq = {}
@@ -179,13 +201,7 @@ def quant_sequential(model, dataloader, dev):
                 blocksize=args.blocksize,
             )
             gptq[name].free()
-            
-            # # 写入到 losslog.txt
-            # with open('salient_channel_smooth.txt', 'a') as log_file:
-            #     log_file.write(f"{i}, {name}, {info}\n")
-                
-            # key = f"{i}.{name}"  # 创建键
-            # data_dict[key] = info  # 将info作为值存入字典
+
 
         for j in range(args.nsamples):
             outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask)[0]
@@ -197,7 +213,7 @@ def quant_sequential(model, dataloader, dev):
 
         inps, outs = outs, inps
     
-    # torch.save(data_dict, 'salient_channel_origin.pt')
+
     model.config.use_cache = use_cache
 
 
@@ -235,6 +251,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--nsamples", type=int, default=128, help="Number of calibration data samples."
     )
+    parser.add_argument(
+        "--epochs", type=int, default=200, help="Number of epochs to train."
+    )
+    parser.add_argument(
+    "--act_quant", action="store_true", help="Enable activation quantization (default: False)."
+)
     parser.add_argument(
         "--percdamp",
         type=float,
@@ -292,36 +314,26 @@ if __name__ == "__main__":
     save_title = f"{args.model}_{args.dataset}_{args.low_quant_method}_{groupsize}_{args.salient_metric}"
     save_file = "./output/" + save_title.replace("/", "_") + ".pt"
     
-    # with open('scale_results.txt', 'w') as file:
-    #     # 循环从0.7到0.99，每隔0.01取一个值
-    # for i in range(12, 32, 2):  # 70到99，对应0.70到0.99
-    #     i = i/10
-    i = 22
-    i = i/10
-    scale = 0.89
-    alpha = 0.9
-    # scale = 0.5
+
+    alpha = 0.85
+
     if args.load_quantized:
         model = get_model(save_file)
         model.eval()
     else: # braq
         model = get_model(args.model)
         model = model.to(device)
-
-        
-        # act_scales = torch.load("/home/zijian/projects/BiLLM/opt-6.7b.pt")
-        act_scales = torch.load("/home/zijian/projects/OmniQuant/act_scales/Meta-Llama-3-8B.pt")
         
 
-        # smooth_lm_new(model, act_scales, alpha)
-        # model = quantize_opt(model)
+        act_scales = torch.load("/home/zijian/projects/dbell/llama-2-7b.pt")
+        
 
-        print(model)
-
-
+        smooth_lm_new(model, act_scales, alpha, device, args.epochs)
         
         
-        model.eval()
+        if args.act_quant:
+            model = quantize_llama_like(model)
+
         tick = time.time()
         dataloader, testloader = get_loaders(
             args.dataset,
@@ -353,8 +365,8 @@ if __name__ == "__main__":
 
             ppl = llama_eval(model, testloader, device, dataset, args.log_wandb)
             result.append(ppl)
-                    # output = f'Scale: {scale:.2f} 的结果是: [{result}]\n'
-                    # file.write(output) 
-                # with open('channel_scale_new_top4_correct.txt', 'a') as log_file:
-                #         log_file.write(f"{i}, {result}\n")
-                    
+        elif "qwen" in args.model:
+            from eval_ppl_utils import qwen_eval
+            ppl = qwen_eval(model, testloader, device, dataset, args.log_wandb)
+    
+             
