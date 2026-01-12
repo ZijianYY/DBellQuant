@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from functools import partial
-from mamba_ssm.modules.block import Block
+# from mamba_ssm.modules.block import Block
 
 
 @torch.no_grad()
@@ -80,10 +80,10 @@ class W8A8Linear(nn.Module):
 
         if act_quant == "per_token":
             self.act_quant_name = "per_token"
-            self.act_quant = partial(quantize_activation_per_token_absmax, n_bits=6)
+            self.act_quant = partial(quantize_activation_per_token_absmax, n_bits=8)
         elif act_quant == "per_tensor":
             self.act_quant_name = "per_tensor"
-            self.act_quant = partial(quantize_activation_per_tensor_absmax, n_bits=6)
+            self.act_quant = partial(quantize_activation_per_tensor_absmax, n_bits=8)
         else:
             raise ValueError(f"Invalid act_quant: {act_quant}")
 
@@ -195,8 +195,14 @@ def quantize_llama_like(
         MistralAttention,
         MistralMLP,
     )
+    
+    # from transformers.models.qwen2.modeling_qwen2 import (
+    #     Qwen2Attention,
+    #     Qwen2MLP,
+    # )
 
     for name, m in model.model.named_modules():
+        # if isinstance(m, (LlamaMLP, MistralMLP, Qwen2MLP)):
         if isinstance(m, (LlamaMLP, MistralMLP)):
             m.gate_proj = W8A8Linear.from_float(
                 m.gate_proj, weight_quant=weight_quant, act_quant=act_quant
@@ -208,6 +214,7 @@ def quantize_llama_like(
             m.down_proj = W8A8Linear.from_float(
                 m.down_proj, weight_quant=weight_quant, act_quant=act_quant
             )
+        # elif isinstance(m, (LlamaAttention, MistralAttention, Qwen2Attention)):
         elif isinstance(m, (LlamaAttention, MistralAttention)):
             # Her we simulate quantizing BMM inputs by quantizing the output of q_proj, k_proj, v_proj
             m.q_proj = W8A8Linear.from_float(

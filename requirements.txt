@@ -4,11 +4,6 @@ aiohttp==3.9.5
 aiosignal==1.3.1
 async-timeout==4.0.3
 attrs==23.2.0
-Brotli @ file:///home/conda/feedstock_root/build_artifacts/brotli-split_1695989787169/work
-causal-conv1d==1.4.0
-certifi @ file:///home/conda/feedstock_root/build_artifacts/certifi_1720457958366/work/certifi
-cffi @ file:///home/conda/feedstock_root/build_artifacts/cffi_1696001742886/work
-charset-normalizer @ file:///home/conda/feedstock_root/build_artifacts/charset-normalizer_1698833585322/work
 click==8.1.8
 cmake==3.30.0
 colorama==0.4.6
@@ -18,29 +13,20 @@ datasets==2.14.6
 dill==0.3.7
 einops==0.8.0
 exceptiongroup==1.2.2
-filelock @ file:///home/conda/feedstock_root/build_artifacts/filelock_1719088281970/work
 fonttools==4.53.1
 frozenlist==1.4.1
 fsspec==2023.10.0
-gmpy2 @ file:///home/conda/feedstock_root/build_artifacts/gmpy2_1715527292503/work
-h2 @ file:///home/conda/feedstock_root/build_artifacts/h2_1634280454336/work
 hf-xet==1.2.0
 hpack==4.0.0
 huggingface-hub==0.17.3
-hyperframe @ file:///home/conda/feedstock_root/build_artifacts/hyperframe_1619110129307/work
-idna @ file:///home/conda/feedstock_root/build_artifacts/idna_1713279365350/work
 imageio==2.34.2
 importlib_resources==6.4.0
-Jinja2 @ file:///home/conda/feedstock_root/build_artifacts/jinja2_1715127149914/work
 joblib==1.3.2
 kiwisolver==1.4.5
 lazy_loader==0.4
 lit==18.1.8
 lxml==6.0.0
-mamba-ssm @ https://github.com/state-spaces/mamba/releases/download/v2.0.4/mamba_ssm-2.0.4+cu118torch2.0cxx11abiFALSE-cp39-cp39-linux_x86_64.whl#sha256=8ccd1bd25aa9432b110dd9ee5d18dc5ac7ece9c8408d21391489dcbb9f9d6a52
-MarkupSafe @ file:///home/conda/feedstock_root/build_artifacts/markupsafe_1706899945820/work
 matplotlib==3.9.1
-mpmath @ file:///home/conda/feedstock_root/build_artifacts/mpmath_1678228039184/work
 multidict==6.0.5
 multiprocess==0.70.15
 networkx==3.1
@@ -50,21 +36,17 @@ numpy==1.24.3
 opencv-python==4.10.0.84
 packaging==24.1
 pandas==2.2.2
-Pillow @ file:///home/conda/feedstock_root/build_artifacts/pillow_1675487166627/work
 portalocker==3.2.0
 protobuf==5.28.2
 psutil==6.0.0
 pyarrow==16.1.0
 pyarrow-hotfix==0.6
-pycparser @ file:///home/conda/feedstock_root/build_artifacts/pycparser_1711811537435/work
 pyparsing==3.1.2
-PySocks @ file:///home/conda/feedstock_root/build_artifacts/pysocks_1661604839144/work
 python-dateutil==2.9.0.post0
 PyTurboJPEG==1.7.2
 pytz==2024.1
 PyYAML==6.0.1
 regex==2024.5.15
-requests @ file:///home/conda/feedstock_root/build_artifacts/requests_1717057054362/work
 rouge_score==0.1.2
 sacrebleu==2.5.1
 safetensors==0.4.3
@@ -74,7 +56,6 @@ scipy==1.13.1
 sentencepiece==0.2.0
 shapely==2.0.2
 six==1.16.0
-sympy @ file:///home/conda/feedstock_root/build_artifacts/sympy_1721004824012/work
 tabulate==0.9.0
 termcolor==2.3.0
 threadpoolctl==3.2.0
@@ -86,9 +67,7 @@ torchvision==0.15.2
 tqdm==4.66.4
 transformers==4.35.1
 triton==2.0.0
-typing_extensions @ file:///home/conda/feedstock_root/build_artifacts/typing_extensions_1717802530399/work
 tzdata==2024.1
-urllib3 @ file:///home/conda/feedstock_root/build_artifacts/urllib3_1719391292974/work
 xxhash==3.4.1
 yarl==1.9.4
 zipp==3.19.2

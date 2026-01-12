@@ -2,10 +2,11 @@ import time
 
 import torch
 import torch.nn as nn
-try:
-    from mamba_ssm.ops.triton.layer_norm import RMSNorm, layer_norm_fn, rms_norm_fn
-except ImportError:
-    RMSNorm, layer_norm_fn, rms_norm_fn = None, None, None
+from tqdm import tqdm
+# try:
+#     from mamba_ssm.ops.triton.layer_norm import RMSNorm, layer_norm_fn, rms_norm_fn
+# except ImportError:
+#     RMSNorm, layer_norm_fn, rms_norm_fn = None, None, None
 
 
 
@@ -558,3 +559,137 @@ def llama_eval_train(model, dataloader,testenc, dev,  dataset: str, log_wandb: b
     model.config.use_cache = use_cache
     
     return ppl
+
+@torch.no_grad()
+def qwen_eval(model, testenc, dev,  dataset: str, log_wandb: bool = False):
+    print("Evaluating ...")
+    print("111")
+
+    testenc = testenc.input_ids
+    nsamples = testenc.numel() // model.seqlen
+    print(nsamples)
+
+    use_cache = model.config.use_cache
+    model.config.use_cache = False
+    layers = model.model.layers
+
+    model.model.embed_tokens = model.model.embed_tokens.to(dev)
+    layers[0] = layers[0].to(dev)
+
+    dtype = next(iter(model.parameters())).dtype
+    inps = torch.zeros(
+        (nsamples, model.seqlen, model.config.hidden_size), dtype=dtype, device=dev
+    )
+    cache = {"i": 0, "attention_mask": None, 'position_ids': None}
+
+    class Catcher(nn.Module):
+        def __init__(self, module):
+            super().__init__()
+            self.module = module
+
+        def forward(self, inp, **kwargs):
+            inps[cache["i"]] = inp
+            cache["i"] += 1
+            cache["attention_mask"] = kwargs["attention_mask"]
+            cache['position_ids'] = kwargs['position_ids']
+            cache['position_embeddings'] = kwargs['position_embeddings']
+            raise ValueError
+
+    layers[0] = Catcher(layers[0])
+
+    for i in range(nsamples):
+        batch = testenc[:, (i * model.seqlen) : ((i + 1) * model.seqlen)].to(dev)
+        try:
+            model(batch.to(dev))
+        except ValueError:
+            pass
+    layers[0] = layers[0].module
+
+    layers[0] = layers[0].cpu()
+    model.model.embed_tokens = model.model.embed_tokens.cpu()
+    torch.cuda.empty_cache()
+
+    outs = torch.zeros_like(inps)
+    attention_mask = cache["attention_mask"]
+    position_ids = cache['position_ids']
+    position_embeddings = cache['position_embeddings']
+
+    for i in range(len(layers)):
+        print(i)
+        layer = layers[i].to(dev)
+
+        for j in range(nsamples):
+            # outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask)[0]
+            outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=position_ids, position_embeddings=position_embeddings)[0]
+        layers[i] = layer.cpu()
+        del layer
+        torch.cuda.empty_cache()
+        inps, outs = outs, inps
+
+    if model.model.norm is not None:
+        model.model.norm = model.model.norm.to(dev)
+    model.lm_head = model.lm_head.to(dev)
+
+    testenc = testenc.to(dev)
+    nlls = []
+    for i in range(nsamples):
+        hidden_states = inps[i].unsqueeze(0)
+        if model.model.norm is not None:
+            hidden_states = model.model.norm(hidden_states)
+        lm_logits = model.lm_head(hidden_states)
+        shift_logits = lm_logits[:, :-1, :].contiguous()
+        shift_labels = testenc[:, (i * model.seqlen) : ((i + 1) * model.seqlen)][:, 1:]
+        loss_fct = nn.CrossEntropyLoss()
+        loss = loss_fct(
+            shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)
+        )
+        neg_log_likelihood = loss.float() * model.seqlen
+        nlls.append(neg_log_likelihood)
+    ppl = torch.exp(torch.stack(nlls).sum() / (nsamples * model.seqlen))
+    print(f"Perplexity: {ppl.item():3f}")
+
+    model.config.use_cache = use_cache
+    
+    return ppl
+
+@torch.no_grad()
+def gemma_eval(model,device):
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained("Model/google/gemma-7b")  
+
+    from datasets import load_dataset
+
+    test = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
+    encodings = tokenizer(test["text"], add_special_tokens=False) # use tokenizer parallelism
+    encodings.input_ids = torch.tensor([sum(encodings.input_ids, [])])
+
+    max_length = 4096 
+    stride = 2048
+
+    seq_len = encodings.input_ids.size(1)
+
+    nlls = []
+    prev_end_loc = 0
+    for begin_loc in tqdm(range(0, seq_len, stride)):
+        end_loc = min(begin_loc + max_length, seq_len)
+        trg_len = end_loc - prev_end_loc  # may be different from stride on last loop
+        input_ids = encodings.input_ids[:, begin_loc:end_loc].to(device)
+        input_ids[:, 0] = 2 # bos token
+        target_ids = input_ids.clone()
+        target_ids[:, :-trg_len] = -100
+
+        with torch.no_grad():
+            outputs = model(input_ids, labels=target_ids)
+
+            # loss is calculated using CrossEntropyLoss which averages over valid labels
+            # N.B. the model only calculates loss over trg_len - 1 labels, because it internally shifts the labels
+            # to the left by 1.
+            neg_log_likelihood = outputs.loss
+
+        nlls.append(neg_log_likelihood)
+        prev_end_loc = end_loc
+        if end_loc == seq_len:
+            break
+
+    ppl = torch.exp(torch.stack(nlls).mean())
+    print("Perplexity:", ppl)
