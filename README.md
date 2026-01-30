@@ -3,7 +3,7 @@
 
 ## DBellQuant: Breaking the Bell with Double-Bell Transformation for LLM Post Training Binarization
 
-[arXiv](https://arxiv.org/abs/2507.01027)
+[arXiv](https://arxiv.org/abs/2507.01027v2)
 
 DBellQuant Framework Overview
 
@@ -57,7 +57,7 @@ QA results:
 
 In terms of average accuracy on QA datasets, DBellQuant significantly surpasses previous methods and increase the average accuracy up to 42.48%
 
-![DBellQuant](imgs/qa_result.png)
+![DBellQuant](imgs/qa_4bit.png)
 
 Perplexity results
 
